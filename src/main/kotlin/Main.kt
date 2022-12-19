@@ -1,7 +1,23 @@
-fun main(args: Array<String>) {
-    println("Hello World!")
+import InputProcessor.process
+import Tokenizer.tokenize
+import java.nio.file.Files.newBufferedReader
+import java.nio.file.Path.of
 
-    // Try adding program arguments via Run/Debug configuration.
-    // Learn more about running applications: https://www.jetbrains.com/help/idea/running-applications.html.
-    println("Program arguments: ${args.joinToString()}")
+fun main(args: Array<String>) {
+    val input = process("'n' '+' 'n' '*' 'n'")
+    val filePath = of(args.getOrElse(0) { "grammar.txt" })
+    val rulesLines = newBufferedReader(filePath.toAbsolutePath()).use {
+        it.readLines()
+    }
+
+    val tokenizedGrammar = tokenize(rulesLines)
+    
+    tokenizedGrammar.writeRules(of("test.txt"))
+    tokenizedGrammar.writeTokens(of("tokens.txt"))
+
+    val automaton = AutomatonBuilder(tokenizedGrammar).build()
+
+    println(automaton.toString())
+    WorkingStack(input, automaton, tokenizedGrammar.inputToNode).process()
+
 }
