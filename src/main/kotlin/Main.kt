@@ -11,13 +11,9 @@ fun main(args: Array<String>) {
     }
 
     val tokenizedGrammar = tokenize(rulesLines)
-    
     tokenizedGrammar.writeRules(of("test.txt"))
     tokenizedGrammar.writeTokens(of("tokens.txt"))
-
     val automaton = AutomatonBuilder(tokenizedGrammar).build()
-
-    println(automaton.toString())
     WorkingStack(input, automaton, tokenizedGrammar.inputToNode).process()
 
 }

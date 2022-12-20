@@ -59,7 +59,7 @@ data class AutomatonBuilder(
         }
 
         println("Success building automaton")
-        return@with Automaton(nka, e, startState)
+        return@with Automaton(nka, e, end, startState)
     }
 
     private fun first(node: Node): Set<Node> {
@@ -101,10 +101,47 @@ data class AutomatonBuilder(
 data class Automaton(
     val nka: HashMap<StateWithTransition, List<State>>,
     val e: Node,
+    val end: Node,
     val startState: State
 ) {
-    fun startedStates() =
-        nka[StateWithTransition(startState, e)]!!.plus(startState)
+    val startedStates: List<State> = statesAfterEpsTransitions(startState)
+
+    private fun statesAfterTransition(transition: Node, initialStates: List<State> = startedStates): List<State> {
+        val states = mutableSetOf<State>()
+        initialStates.forEach {
+            if(nka.containsKey(StateWithTransition(it, transition))) {
+                nka[StateWithTransition(it, transition)]!!.forEach { state ->
+                    states.addAll(statesAfterEpsTransitions(state))
+                }
+            }
+        }
+       return states.toList()
+    }
+
+    fun statesAfterTransitions(transitions: List<Node>): List<State> {
+        var curStates = startedStates
+        transitions.forEach {
+            curStates = statesAfterTransition(it, curStates)
+        }
+        return curStates
+    }
+
+    private fun statesAfterEpsTransitions(state: State): List<State> {
+        val deque = ArrayDeque(listOf(state))
+        val visited = mutableListOf(state)
+        while (deque.isNotEmpty()) {
+            val curState = deque.removeFirst()
+            if (nka.containsKey(StateWithTransition(curState, e))) {
+                nka[StateWithTransition(curState, e)]!!.forEach {
+                    if (it !in visited) {
+                        deque.add(it)
+                        visited.add(it)
+                    }
+                }
+            }
+        }
+        return visited
+    }
 
     override fun toString(): String =
         nka.entries.joinToString("==============\n") {
