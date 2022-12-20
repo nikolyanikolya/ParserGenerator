@@ -17,7 +17,7 @@ data class WorkingStack(
 
     private fun toStateType(isTerminalState: Boolean) =
         if (isTerminalState) TERMINAL else NON_TERMINAL
-    fun process() {
+    fun process(): Tree {
         while (input.isNotEmpty() || workingStack != listOf(automaton.startState.rule.left)) {
             val statesByType = currentStates.groupBy { toStateType(it.isTerminalState) }
             val terminalStates = statesByType.getOrDefault(TERMINAL, emptyList())
@@ -38,8 +38,8 @@ data class WorkingStack(
         }
 
         assert(trees.size == 1)
-        trees[0].display()
         println("Success processing")
+        return trees[0]
     }
     private fun shift() {
         if (input.isEmpty()) {

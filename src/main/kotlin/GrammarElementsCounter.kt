@@ -1,20 +1,8 @@
-class GrammarElementsCounter {
-    private val grammarElementsCounter = mutableMapOf(
-            "S" to 0L,
-            "E'" to 0L,
-            "E" to 0L,
-            "T" to 0L,
-            "T'" to 0L,
-            "F" to 0L,
-            "\'e\'" to 0L,
-            "\'(\'" to 0L,
-            "\')\'" to 0L,
-            "\'*\'" to 0L,
-            "\'$\'" to 0L,
-            "\'+\'" to 0L,
-            "\'n\'" to 0L,
-        )
+class GrammarElementsCounter(
+    inputToNodeMapper: HashMap<String, Node>
+) {
 
+    private val grammarElementsCounter = inputToNodeMapper.keys.associateWith { 0L } as MutableMap
     operator fun get(key: String): Long? {
         return grammarElementsCounter[key]
     }
