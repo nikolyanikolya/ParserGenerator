@@ -104,10 +104,7 @@ data class WorkingStack(
             Tree(
                 nodeToNonTerminalMapper[left]!!,
                 (if (right != listOf(automaton.e)) children else listOf(
-                    Tree(
-                        nodeToTerminalMapper[automaton.e]!!,
-                        mutableListOf()
-                    )
+                    Tree(nodeToTerminalMapper[automaton.e]!!)
                 )) as MutableList
             )
         ) // context-free grammar

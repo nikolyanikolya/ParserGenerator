@@ -5,12 +5,18 @@ object Tokenizer {
     fun tokenize(input: List<String>): TokenizedGrammar {
         var cnt = 0L
         val terminalToNode = HashMap<String, Node>()
-        val nonTerminalToNode = HashMap<String, Node>()
+        val nonTerminalToNode = HashMap<String, Node>().let { map ->
+            input.forEach {
+                val (left, _) = it.split(":")
+                if (!left.startsWith("Start") && !left.startsWith("End"))
+                  map.putIfAbsent(left, Node(cnt++, false)) // context-free grammar
+            }
+            map
+        }
         val regexToNode = HashMap<Regex, Node>()
         val rules = HashMap<Node, RuleVariants>()
         val (_, startedState) = input[0].split(" ")
-        val startedNode = Node(cnt++, false)
-        nonTerminalToNode.putIfAbsent(startedState, startedNode)
+        val startedNode = nonTerminalToNode[startedState]!!
 
         val (_, endState) = input[1].split(" ")
         val endNode = Node(cnt++, true)
@@ -19,7 +25,6 @@ object Tokenizer {
         for (str in input.drop(2)) {
             val ruleVariants = RuleVariants(mutableListOf())
             val (left, right) = str.split(":")
-            nonTerminalToNode.putIfAbsent(left, Node(cnt++, false))
             val leftToken = nonTerminalToNode[left]!!
             val rightRules = right.split("|")
 
@@ -29,27 +34,28 @@ object Tokenizer {
 
                 for (rightUnit in rightPart) {
                     val trimmedUnit = rightUnit.trim()
-                    if (trimmedUnit.matches("\'.*\'".toRegex())) {
-                        terminalToNode.putIfAbsent(trimmedUnit, Node(cnt++, true))
-                        tokens.add(terminalToNode[trimmedUnit]!!)
-                    } else if (left.matches("^[A-Z].*".toRegex())) {
-                        val entry = regexToNode.entries.firstOrNull { (regex, _) -> trimmedUnit.matches(regex) }
-                        if (entry == null) {
-                            val newNode = Node(cnt++, true)
-                            regexToNode[trimmedUnit.toRegex()] = newNode
-                            tokens.add(newNode)
+                    if (!nonTerminalToNode.containsKey(trimmedUnit)) {
+                        if (left.matches("^[A-Z].*".toRegex())) {
+                            val entry = regexToNode.entries.firstOrNull { (regex, _) -> trimmedUnit == regex.toString() }
+                            if (entry == null) {
+                                val newNode = Node(cnt++, true)
+                                regexToNode[trimmedUnit.toRegex()] = newNode
+                                tokens.add(newNode)
+                            } else {
+                                tokens.add(entry.value)
+                            }
                         } else {
-                            tokens.add(entry.value)
+                            terminalToNode.putIfAbsent(trimmedUnit, Node(cnt++, true))
+                            tokens.add(terminalToNode[trimmedUnit]!!)
                         }
                     } else {
-                        nonTerminalToNode.putIfAbsent(trimmedUnit, Node(cnt++, false))
                         tokens.add(nonTerminalToNode[trimmedUnit]!!)
                     }
 
                 }
 
                 ruleVariants.add(tokens)
-                if (nonTerminalToNode.containsKey(left) && rules.containsKey(leftToken)) {
+                if (rules.containsKey(leftToken)) {
                     ruleVariants.plus(rules[leftToken]!!)
                 }
             }

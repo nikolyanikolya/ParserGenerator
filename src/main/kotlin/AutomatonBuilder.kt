@@ -2,7 +2,7 @@ data class AutomatonBuilder(
     private val grammar: TokenizedGrammar,
 ) {
     fun build(): Automaton = with(grammar) {
-        val e = grammar.terminalToNode["\'e\'"]!!
+        val e = grammar.terminalToNode["z"]!!
         val nka = HashMap<StateWithTransition, List<State>>()
         val right = rules[start]!!.rulesRight.flatten()
         val startState = State(0, Rule(start, right), setOf(end), right.isEmpty())
