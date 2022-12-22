@@ -3,10 +3,10 @@ End $
 s: e $
 e: t e'
 e': + t e'
-e': z
+e': empty
 t: f t'
 t': * f t'
-t': z
+t': empty
 f: ( e )
 f: N
 N: [1-9][0-9]*

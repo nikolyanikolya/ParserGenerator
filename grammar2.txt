@@ -1,0 +1,9 @@
+Start s0
+End $
+s0: s $
+s: var X : a e
+a: X
+a: Array < a >
+e: ;
+e: empty
+X: [A-Za-z_]+

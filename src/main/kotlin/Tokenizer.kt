@@ -15,24 +15,24 @@ object Tokenizer {
         }
         val regexToNode = HashMap<Regex, Node>()
         val rules = HashMap<Node, RuleVariants>()
-        val (_, startedState) = input[0].split(" ")
+        val (_, startedState) = input[0].split(" ", limit = 2)
         val startedNode = nonTerminalToNode[startedState]!!
 
-        val (_, endState) = input[1].split(" ")
+        val (_, endState) = input[1].split(" ", limit = 2)
         val endNode = Node(cnt++, true)
         terminalToNode.putIfAbsent(endState, endNode)
 
         for (str in input.drop(2)) {
             val ruleVariants = RuleVariants(mutableListOf())
-            val (left, right) = str.split(":")
+            val (left, right) = str.split(":", limit = 2)
             val leftToken = nonTerminalToNode[left]!!
             val rightRules = right.split("|")
 
             for (rightRule in rightRules) {
-                val rightPart = rightRule.trim().split(" ")
+                val rightParts = rightRule.trim().split(" ")
                 val tokens = mutableListOf<Node>()
 
-                for (rightUnit in rightPart) {
+                for (rightUnit in rightParts) {
                     val trimmedUnit = rightUnit.trim()
                     if (!nonTerminalToNode.containsKey(trimmedUnit)) {
                         if (left.matches("^[A-Z].*".toRegex())) {

@@ -4,8 +4,8 @@ import java.nio.file.Files.newBufferedReader
 import java.nio.file.Path.of
 
 fun main(args: Array<String>) {
-    val input = process("42 + 239 * 100500")
-    val filePath = of(args.getOrElse(0) { "grammar.txt" })
+    val input = process(args.getOrElse(0) { "42 + 239 * 100500" })
+    val filePath = of(args.getOrElse(1) { "grammar.txt" })
     val rulesLines = newBufferedReader(filePath.toAbsolutePath()).use {
         it.readLines()
     }
