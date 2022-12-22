@@ -1,24 +1,26 @@
-import java.nio.file.Files
+import java.nio.file.Files.newBufferedWriter
 import java.nio.file.Path
 
 object Tokenizer {
     fun tokenize(input: List<String>): TokenizedGrammar {
         var cnt = 0L
-        val inputToNode = HashMap<String, Node>()
+        val terminalToNode = HashMap<String, Node>()
+        val nonTerminalToNode = HashMap<String, Node>()
+        val regexToNode = HashMap<Regex, Node>()
         val rules = HashMap<Node, RuleVariants>()
         val (_, startedState) = input[0].split(" ")
         val startedNode = Node(cnt++, false)
-        inputToNode.putIfAbsent(startedState, startedNode)
+        nonTerminalToNode.putIfAbsent(startedState, startedNode)
 
         val (_, endState) = input[1].split(" ")
         val endNode = Node(cnt++, true)
-        inputToNode.putIfAbsent(endState, endNode)
+        terminalToNode.putIfAbsent(endState, endNode)
 
         for (str in input.drop(2)) {
             val ruleVariants = RuleVariants(mutableListOf())
             val (left, right) = str.split(":")
-            inputToNode.putIfAbsent(left, Node(cnt++, false))
-            val leftToken = inputToNode[left]!!
+            nonTerminalToNode.putIfAbsent(left, Node(cnt++, false))
+            val leftToken = nonTerminalToNode[left]!!
             val rightRules = right.split("|")
 
             for (rightRule in rightRules) {
@@ -28,16 +30,26 @@ object Tokenizer {
                 for (rightUnit in rightPart) {
                     val trimmedUnit = rightUnit.trim()
                     if (trimmedUnit.matches("\'.*\'".toRegex())) {
-                        inputToNode.putIfAbsent(trimmedUnit, Node(cnt++, true))
+                        terminalToNode.putIfAbsent(trimmedUnit, Node(cnt++, true))
+                        tokens.add(terminalToNode[trimmedUnit]!!)
+                    } else if (left.matches("^[A-Z].*".toRegex())) {
+                        val entry = regexToNode.entries.firstOrNull { (regex, _) -> trimmedUnit.matches(regex) }
+                        if (entry == null) {
+                            val newNode = Node(cnt++, true)
+                            regexToNode[trimmedUnit.toRegex()] = newNode
+                            tokens.add(newNode)
+                        } else {
+                            tokens.add(entry.value)
+                        }
                     } else {
-                        inputToNode.putIfAbsent(trimmedUnit, Node(cnt++, false))
+                        nonTerminalToNode.putIfAbsent(trimmedUnit, Node(cnt++, false))
+                        tokens.add(nonTerminalToNode[trimmedUnit]!!)
                     }
 
-                    tokens.add(inputToNode[trimmedUnit]!!)
                 }
 
                 ruleVariants.add(tokens)
-                if (inputToNode.containsKey(left) && rules.containsKey(leftToken)) {
+                if (nonTerminalToNode.containsKey(left) && rules.containsKey(leftToken)) {
                     ruleVariants.plus(rules[leftToken]!!)
                 }
             }
@@ -45,7 +57,7 @@ object Tokenizer {
             rules[leftToken] = ruleVariants
         }
 
-        return TokenizedGrammar(startedNode, endNode, inputToNode, rules)
+        return TokenizedGrammar(startedNode, endNode, nonTerminalToNode, terminalToNode, regexToNode, rules)
     }
 }
 
@@ -69,11 +81,13 @@ data class RuleVariants(
 data class TokenizedGrammar(
     val start: Node,
     val end: Node,
-    val inputToNode: HashMap<String, Node>,
+    val nonTerminalToNode: HashMap<String, Node>,
+    val terminalToNode: HashMap<String, Node>,
+    val regexToNode: HashMap<Regex, Node>,
     val rules: HashMap<Node, RuleVariants>,
 ) {
     fun writeRules(fileName: Path) {
-        Files.newBufferedWriter(fileName).use {
+        newBufferedWriter(fileName).use {
             rules.entries.forEach { (key, value) ->
                 it.write("${key.token} -> " +
                         value.rulesRight.joinToString(" | ") {
@@ -86,8 +100,8 @@ data class TokenizedGrammar(
     }
 
     fun writeTokens(fileName: Path) {
-        Files.newBufferedWriter(fileName).use {
-            inputToNode.entries.forEach { (key, value) ->
+        newBufferedWriter(fileName).use {
+            (terminalToNode.entries + nonTerminalToNode.entries + regexToNode.entries).forEach { (key, value) ->
                 it.write("$key = $value")
                 it.newLine()
             }

@@ -4,8 +4,10 @@ import org.graphstream.graph.implementations.MultiGraph
 import java.util.function.Consumer
 
 class Visualizer(
-    private val inputToNodeMapper: HashMap<String, Node>,
+    grammar: TokenizedGrammar,
 ) {
+
+    private val grammarElementsCounter: GrammarElementsCounter = GrammarElementsCounter(grammar)
     fun display(tree: Tree) {
         System.setProperty("org.graphstream.ui", "javafx")
         System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer")
@@ -21,10 +23,9 @@ class Visualizer(
     private fun graphTraversal(
         tree: Tree,
         graph: Graph,
-        grammarElementsCounter: GrammarElementsCounter = GrammarElementsCounter(inputToNodeMapper)
     ): org.graphstream.graph.Node {
         var treeNodeName = tree.node
-        var valueByKey: Long = grammarElementsCounter[tree.node]!!
+        var valueByKey: Long = grammarElementsCounter[tree.node]
         treeNodeName += valueByKey
         valueByKey += 1
         grammarElementsCounter.put(tree.node, valueByKey)
@@ -37,7 +38,7 @@ class Visualizer(
         val finalTreeNodeName = treeNodeName
         tree.children.forEach(
             Consumer { child: Tree ->
-                val childNode = graphTraversal(child, graph, grammarElementsCounter)
+                val childNode = graphTraversal(child, graph)
                 graph.addEdge(finalTreeNodeName + " -> " + childNode.id, treeNode, childNode) as Edge
             }
         )
