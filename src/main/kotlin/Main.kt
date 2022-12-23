@@ -14,6 +14,8 @@ fun main(args: Array<String>) {
     tokenizedGrammar.writeRules(of("test.txt"))
     tokenizedGrammar.writeTokens(of("tokens.txt"))
     val automaton = AutomatonBuilder(tokenizedGrammar).build()
+    println("Automaton size: ${automaton.nka.size}")
+    println(automaton.nka.keys.map { it.state })
     val tree =
         WorkingStack(
             input,

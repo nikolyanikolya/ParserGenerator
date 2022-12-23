@@ -41,7 +41,7 @@ data class AutomatonBuilder(
                                 visited.add(to)
                             }
                             result.add(to)
-                    }
+                        }
                 }
 
                 val to = State(
@@ -114,13 +114,13 @@ data class Automaton(
     private fun statesAfterTransition(transition: Node, initialStates: List<State> = startedStates): List<State> {
         val states = mutableSetOf<State>()
         initialStates.forEach {
-            if(nka.containsKey(StateWithTransition(it, transition))) {
+            if (nka.containsKey(StateWithTransition(it, transition))) {
                 nka[StateWithTransition(it, transition)]!!.forEach { state ->
                     states.addAll(statesAfterEpsTransitions(state))
                 }
             }
         }
-       return states.toList()
+        return states.toList()
     }
 
     fun statesAfterTransitions(transitions: List<Node>): List<State> {
@@ -149,8 +149,7 @@ data class Automaton(
     }
 
     override fun toString(): String =
-        nka.entries.joinToString("==============\n") {
-            (key, value) ->
+        nka.entries.joinToString("==============\n") { (key, value) ->
             value.joinToString("\n") {
                 key.state.toString() + " by " + key.node + ">>>> " + it.toString()
             }
@@ -167,10 +166,21 @@ data class State(
 ) {
     override fun toString(): String {
         return "[${rule.left.token} -> " +
-                    "${rule.right.joinToString(",") { it.token.toString() }}, " +
-                    "$marker, $lookahead" +
+                "${rule.right.joinToString { it.token.toString() }}; " +
+                "Marker: $marker; Lookahead: ${lookahead.joinToString { it.token.toString() }}" +
                 "]" +
-                if (isTerminalState) " TERMINATE" else ""
+                if (isTerminalState) " TERMINATE STATE" else ""
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other is State) {
+            return marker == other.marker && rule == other.rule && isTerminalState == other.isTerminalState
+        }
+        return false
+    }
+
+    override fun hashCode(): Int {
+        return 239 * marker.hashCode() + 17 * rule.hashCode() + 13 * isTerminalState.hashCode()
     }
 }
 
