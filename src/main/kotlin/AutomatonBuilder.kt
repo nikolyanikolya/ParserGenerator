@@ -1,11 +1,15 @@
+import kotlin.reflect.KFunction
+
 data class AutomatonBuilder(
     private val grammar: TokenizedGrammar,
 ) {
     fun build(): Automaton = with(grammar) {
         val e = grammar.terminalToNode["empty"]!!
         val nka = HashMap<StateWithTransition, List<State>>()
-        val right = rules[start]!!.rulesRight.flatten()
-        val startState = State(0, Rule(start, right), setOf(end), right.isEmpty())
+        val right = rules[start]!!.rulesRight.map { it.rightNodes }.flatten()
+        val reduceFunction = rules[start]!!.rulesRight.map { it.reduceFunction }
+        assert(reduceFunction.size == 1)
+        val startState = State(0, Rule(start, right, reduceFunction[0]), setOf(end), right.isEmpty())
         val visited = HashSet<State>()
         val deque = ArrayDeque(listOf(startState))
 
@@ -19,23 +23,24 @@ data class AutomatonBuilder(
                 val result = mutableListOf<State>()
 
                 if (!node.isTerminal) {
-                    rules[node]!!.rulesRight.forEach { rightNodes ->
-                        val to = State(
-                            0,
-                            Rule(node, rightNodes),
-                            lookahead.let {
-                                if (marker + 1 >= rule.right.size)
-                                    it
-                                else
-                                    it.plus(first(rule.right[marker + 1]))
-                            },
-                            rightNodes.isEmpty()
-                        )
-                        if (to !in visited) {
-                            deque.add(to)
-                            visited.add(to)
-                        }
-                        result.add(to)
+                    rules[node]!!.rulesRight
+                        .forEach { ruleVariant ->
+                            val to = State(
+                                0,
+                                Rule(node, ruleVariant.rightNodes, ruleVariant.reduceFunction),
+                                lookahead.let {
+                                    if (marker + 1 >= rule.right.size)
+                                        it
+                                    else
+                                        it.plus(first(rule.right[marker + 1]))
+                                },
+                                ruleVariant.rightNodes.isEmpty()
+                            )
+                            if (to !in visited) {
+                                deque.add(to)
+                                visited.add(to)
+                            }
+                            result.add(to)
                     }
                 }
 
@@ -69,7 +74,7 @@ data class AutomatonBuilder(
         val result = mutableSetOf<Node>()
         for (rule in grammar.rules) {
             if (rule.key == node) {
-                rule.value.rulesRight.forEach { nodes ->
+                rule.value.rulesRight.map { it.rightNodes }.forEach { nodes ->
                     result.add(nodes[0])
                 }
             }
@@ -82,7 +87,7 @@ data class AutomatonBuilder(
         val result = mutableSetOf<Node>()
 
         for (rule in grammar.rules) {
-            rule.value.rulesRight.forEach { nodes ->
+            rule.value.rulesRight.map { it.rightNodes }.forEach { nodes ->
                 if (node == nodes.last()) {
                     result.addAll(follow(rule.key))
                 } else {
@@ -171,7 +176,8 @@ data class State(
 
 data class Rule(
     val left: Node,
-    val right: List<Node>
+    val right: List<Node>,
+    val function: KFunction<Any>? = null,
 )
 
 data class StateWithTransition(

@@ -45,6 +45,7 @@ data class WorkingStack(
 
         assert(trees.size == 1)
         println("Success processing")
+        println("Result: ${trees[0].value}")
         return trees[0]
     }
 
@@ -57,7 +58,7 @@ data class WorkingStack(
             val topNode = terminalToNodeMapper[top] ?: regexToNodeMapper.entries.first { (regex, _) ->
                 top.matches(regex)
             }.value
-            trees.add(Tree(top))
+            trees.add(Tree(top, top))
             workingStack.add(topNode)
         }
 
@@ -98,11 +99,12 @@ data class WorkingStack(
             .unzip().first as MutableList
 
         trees = trees.dropLast(children.size).toMutableList()
-
         workingStack.add(left)
         trees.add(
             Tree(
                 nodeToNonTerminalMapper[left]!!,
+                function?.call(children.map { it.value }.toTypedArray())
+                    ?: if (children.size == 1 && children[0].value != null) children[0].value else null,
                 (if (right != listOf(automaton.e)) children else listOf(
                     Tree(nodeToTerminalMapper[automaton.e]!!)
                 )) as MutableList

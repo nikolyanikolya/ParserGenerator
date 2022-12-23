@@ -18,6 +18,7 @@ dependencies {
     implementation("org.graphstream:gs-algo:1.3")
     implementation("org.graphstream:gs-ui:1.3")
     testImplementation(kotlin("test"))
+    implementation(kotlin("reflect"))
 }
 
 apply(plugin = "com.simonharrer.graphviz")

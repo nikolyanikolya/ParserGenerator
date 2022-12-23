@@ -1,30 +1,60 @@
+import java.lang.reflect.Modifier
 import java.nio.file.Files.newBufferedWriter
 import java.nio.file.Path
+import kotlin.reflect.KFunction
+import kotlin.reflect.KProperty
+import kotlin.reflect.jvm.javaMethod
+import kotlin.reflect.jvm.kotlinProperty
 
 object Tokenizer {
     fun tokenize(input: List<String>): TokenizedGrammar {
-        var cnt = 0L
+        val fileWithFunctions = "src/main/kotlin/functions.kt"
         val terminalToNode = HashMap<String, Node>()
+        newBufferedWriter(Path.of(fileWithFunctions)).use { writer ->
+                writer.write("import kotlin.reflect.KFunction")
+                writer.newLine()
+                val allFunctions = mutableListOf<String>()
+                input.forEach {
+                    val res = it.split("@", limit = 3)
+                    if (res.size > 1) {
+                        writer.write(res[1])
+                        val functionName = res[1].trim().split(" ")[1]
+                        allFunctions.add("::$functionName")
+                        writer.newLine()
+                    }
+                }
+                writer.write("val functions : Array<KFunction<Any>> = arrayOf(${allFunctions.joinToString(",")})")
+                writer.newLine()
+
+            }
+
+        val functions = getFieldFromFile("FunctionsKt", "functions")!!.call()
+        var cnt = 0L
         val nonTerminalToNode = HashMap<String, Node>().let { map ->
             input.forEach {
-                val (left, _) = it.split(":")
-                if (!left.startsWith("Start") && !left.startsWith("End"))
-                  map.putIfAbsent(left, Node(cnt++, false)) // context-free grammar
+                val res = it.split("@", limit = 3)
+                val (left, _) = res[0].split(":", limit = 2)
+                if (!left.startsWith("Start") && !left.startsWith("End")) {
+                    map.putIfAbsent(left, Node(cnt++, false)) // context-free grammar
+                }
             }
             map
         }
+
         val regexToNode = HashMap<Regex, Node>()
         val rules = HashMap<Node, RuleVariants>()
         val (_, startedState) = input[0].split(" ", limit = 2)
         val startedNode = nonTerminalToNode[startedState]!!
 
         val (_, endState) = input[1].split(" ", limit = 2)
-        val endNode = Node(cnt++, true)
+        val endNode = Node(cnt++,  true)
         terminalToNode.putIfAbsent(endState, endNode)
+        var functionCnt = 0
 
         for (str in input.drop(2)) {
             val ruleVariants = RuleVariants(mutableListOf())
-            val (left, right) = str.split(":", limit = 2)
+            val res = str.split("@", limit = 3)
+            val (left, right) = res[0].split(":", limit = 2)
             val leftToken = nonTerminalToNode[left]!!
             val rightRules = right.split("|")
 
@@ -51,10 +81,14 @@ object Tokenizer {
                     } else {
                         tokens.add(nonTerminalToNode[trimmedUnit]!!)
                     }
-
                 }
 
-                ruleVariants.add(tokens)
+                if (res.size > 1) {
+                    ruleVariants.add(tokens, functions[functionCnt++])
+                } else {
+                    ruleVariants.add(tokens)
+                }
+
                 if (rules.containsKey(leftToken)) {
                     ruleVariants.plus(rules[leftToken]!!)
                 }
@@ -73,16 +107,21 @@ data class Node(
 )
 
 data class RuleVariants(
-    val rulesRight: MutableList<List<Node>>
+    val rulesRight: MutableList<RuleVariant>
 ) {
-    fun add(rule: List<Node>) {
-        rulesRight.add(rule)
+    fun add(rule: List<Node>, function: KFunction<Any>? = null) {
+        rulesRight.add(RuleVariant(rule, function))
     }
 
     fun plus(rules: RuleVariants) {
         rulesRight += rules.rulesRight
     }
 }
+
+data class RuleVariant(
+    val rightNodes: List<Node>,
+    val reduceFunction: KFunction<Any>? = null
+)
 
 data class TokenizedGrammar(
     val start: Node,
@@ -97,7 +136,7 @@ data class TokenizedGrammar(
             rules.entries.forEach { (key, value) ->
                 it.write("${key.token} -> " +
                         value.rulesRight.joinToString(" | ") {
-                            it.joinToString(" ") { node -> node.token.toString() }
+                            it.rightNodes.joinToString(" ") { node -> node.token.toString() }
                         }
                 )
                 it.newLine()
@@ -113,4 +152,12 @@ data class TokenizedGrammar(
             }
         }
     }
+}
+
+fun getFieldFromFile(fileName: String, fieldName: String): KProperty<Array<KFunction<Any>>>? {
+    val selfRef = ::getFieldFromFile
+    val currentClass = selfRef.javaMethod!!.declaringClass
+    val classDefiningFunctions = currentClass.classLoader.loadClass(fileName)
+    val javaField = classDefiningFunctions.declaredFields.find { it.name == fieldName && Modifier.isStatic(it.modifiers) }
+    return javaField?.kotlinProperty as KProperty<Array<KFunction<Any>>>?
 }

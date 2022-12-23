@@ -1,3 +1,3 @@
-data class Tree(val node: String, val children: MutableList<Tree>) {
-    constructor(node: String): this(node, mutableListOf())
+data class Tree(val node: String, val value: Any? = null, val children: MutableList<Tree>) {
+    constructor(node: String, value: Any? = null): this(node, value, mutableListOf())
 }

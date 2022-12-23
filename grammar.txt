@@ -1,12 +1,12 @@
 Start s
 End $
-s: e $
-e: t e'
-e': + t e'
-e': empty
-t: f t'
-t': * f t'
-t': empty
-f: ( e )
-f: N
-N: [1-9][0-9]*
+s: e $          @ fun const1 (vararg args: Any) = args.first() as Int @
+e: t e'         @ fun add1 (vararg args: Any) = args.map{it as Int}.sum() @
+e': + t e'      @ fun add2 (vararg args: Any) = args.drop(1).map{it as Int}.sum() @
+e': empty       @ fun const2 (vararg args: Any) = 0 @
+t: f t'         @ fun mul1 (vararg args: Any) = args.fold(1) { x, y -> (x as Int) * (y as Int) } @
+t': * f t'      @ fun mul2 (vararg args: Any) = args.drop(1).fold(1) { x, y -> (x as Int) * (y as Int) } @
+t': empty       @ fun const3 (vararg args: Any) = 1 @
+f: ( e )        @ fun const4 (vararg args: Any) = args[1] as Int @
+f: N            @ fun const5 (vararg args: Any) = args.first() as Int @
+N: [1-9][0-9]*  @ fun parseInteger (vararg args: Any) = (args.first() as String).toInt() @
