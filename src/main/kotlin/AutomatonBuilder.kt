@@ -10,8 +10,8 @@ data class AutomatonBuilder(
         val reduceFunction = rules[start]!!.rulesRight.map { it.reduceFunction }
         assert(reduceFunction.size == 1)
         val startState = State(0, Rule(start, right, reduceFunction[0]), setOf(end), right.isEmpty())
-        val visited = HashSet<State>()
-        val deque = ArrayDeque(listOf(startState))
+        val visited = HashSet<RawState>()
+        val deque = ArrayDeque(listOf(RawState(startState)))
 
         while (!deque.isEmpty()) {
             val curState = deque.removeFirst()
@@ -29,16 +29,27 @@ data class AutomatonBuilder(
                                 0,
                                 Rule(node, ruleVariant.rightNodes, ruleVariant.reduceFunction),
                                 lookahead.let {
-                                    if (marker + 1 >= rule.right.size)
-                                        it
-                                    else
-                                        it.plus(first(rule.right[marker + 1]))
+                                    var curLA = setOf<Node>()
+                                    for (i in 1..rule.right.size) {
+                                        if (marker + i >= rule.right.size) {
+                                            curLA = curLA.plus(it)
+                                            break
+                                        } else {
+                                            curLA = curLA.plus(first(rule.right[marker + i]))
+                                        }
+
+                                        if (e !in first(rule.right[marker + i]))
+                                            break
+
+                                    }
+                                    curLA
                                 },
                                 ruleVariant.rightNodes.isEmpty()
                             )
-                            if (to !in visited) {
-                                deque.add(to)
-                                visited.add(to)
+                            val rawTo = RawState(to)
+                            if (rawTo !in visited) {
+                                deque.add(rawTo)
+                                visited.add(rawTo)
                             }
                             result.add(to)
                         }
@@ -52,14 +63,16 @@ data class AutomatonBuilder(
                 )
 
                 if (result.isNotEmpty()) {
-                    nka.putIfAbsent(StateWithTransition(this, e), result)
+                    nka[StateWithTransition(this.toState(), e)] = result
                 }
 
-                if (to !in visited) {
-                    deque.add(to)
-                    visited.add(to)
+                val rawTo = RawState(to)
+                if (rawTo !in visited) {
+                    deque.add(rawTo)
+                    visited.add(rawTo)
                 }
-                nka.putIfAbsent(StateWithTransition(this, node), listOf(to))
+
+                nka[StateWithTransition(this.toState(), node)] = listOf(to)
             }
         }
 
@@ -182,6 +195,17 @@ data class State(
     override fun hashCode(): Int {
         return 239 * marker.hashCode() + 17 * rule.hashCode() + 13 * isTerminalState.hashCode()
     }
+}
+
+data class RawState(
+    val marker: Int,
+    val rule: Rule,
+    val lookahead: Set<Node>,
+    val isTerminalState: Boolean,
+) {
+    constructor(state: State) : this(state.marker, state.rule, state.lookahead, state.isTerminalState)
+
+    fun toState(): State = State(marker, rule, lookahead, isTerminalState)
 }
 
 data class Rule(
