@@ -1,5 +1,7 @@
 # ParserGenerator
 
-Antlr-like application (programm arguments: "expression to process" "grammar file")
+Antlr-like application (program arguments: "expression to process" "grammar file")
 
-example of [grammar](https://github.com/nikolyanikolya/ParserGenerator/blob/main/grammar.txt)
+- supports kotlin functions in grammar files to process rule`s arguments
+  
+- example of [grammar](https://github.com/nikolyanikolya/ParserGenerator/blob/main/grammar.txt)
