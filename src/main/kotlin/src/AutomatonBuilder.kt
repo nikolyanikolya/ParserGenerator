@@ -1,6 +1,8 @@
-import kotlin.reflect.KFunction
+package src
 
-data class AutomatonBuilder(
+import domain.*
+
+class AutomatonBuilder(
     private val grammar: TokenizedGrammar,
 ) {
     fun build(): Automaton = with(grammar) {
@@ -40,7 +42,6 @@ data class AutomatonBuilder(
 
                                         if (e !in first(rule.right[marker + i]))
                                             break
-
                                     }
                                     curLA
                                 },
@@ -95,28 +96,9 @@ data class AutomatonBuilder(
 
         return result
     }
-
-    private fun follow(node: Node): Set<Node> {
-        val result = mutableSetOf<Node>()
-
-        for (rule in grammar.rules) {
-            rule.value.rulesRight.map { it.rightNodes }.forEach { nodes ->
-                if (node == nodes.last()) {
-                    result.addAll(follow(rule.key))
-                } else {
-                    val indexOfFirstEntry = nodes.indexOfFirst { it == node }
-                    if (indexOfFirstEntry != -1) {
-                        result.addAll(first(nodes[indexOfFirstEntry + 1]))
-                    }
-                }
-            }
-        }
-
-        return result
-    }
 }
 
-data class Automaton(
+class Automaton(
     val nka: HashMap<StateWithTransition, List<State>>,
     val e: Node,
     val end: Node,
@@ -167,54 +149,4 @@ data class Automaton(
                 key.state.toString() + " by " + key.node + ">>>> " + it.toString()
             }
         }
-
-
 }
-
-data class State(
-    val marker: Int,
-    val rule: Rule,
-    val lookahead: Set<Node>,
-    val isTerminalState: Boolean,
-) {
-    override fun toString(): String {
-        return "[${rule.left.token} -> " +
-                "${rule.right.joinToString { it.token.toString() }}; " +
-                "Marker: $marker; Lookahead: ${lookahead.joinToString { it.token.toString() }}" +
-                "]" +
-                if (isTerminalState) " TERMINATE STATE" else ""
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (other is State) {
-            return marker == other.marker && rule == other.rule && isTerminalState == other.isTerminalState
-        }
-        return false
-    }
-
-    override fun hashCode(): Int {
-        return 239 * marker.hashCode() + 17 * rule.hashCode() + 13 * isTerminalState.hashCode()
-    }
-}
-
-data class RawState(
-    val marker: Int,
-    val rule: Rule,
-    val lookahead: Set<Node>,
-    val isTerminalState: Boolean,
-) {
-    constructor(state: State) : this(state.marker, state.rule, state.lookahead, state.isTerminalState)
-
-    fun toState(): State = State(marker, rule, lookahead, isTerminalState)
-}
-
-data class Rule(
-    val left: Node,
-    val right: List<Node>,
-    val function: KFunction<Any>? = null,
-)
-
-data class StateWithTransition(
-    val state: State,
-    val node: Node,
-)

@@ -1,5 +1,11 @@
-import WorkingStack.StateType.NON_TERMINAL
-import WorkingStack.StateType.TERMINAL
+package src
+
+import domain.Node
+import domain.RightUnit
+import domain.State
+import domain.StateType.NON_TERMINAL
+import domain.StateType.TERMINAL
+import domain.Tree
 
 data class WorkingStack(
     private val input: ArrayDeque<String>,
@@ -14,11 +20,6 @@ data class WorkingStack(
     private var trees = mutableListOf<Tree>()
     private var workingStack: MutableList<Node> = ArrayList()
     private var currentStates = automaton.startedStates
-
-    enum class StateType {
-        TERMINAL,
-        NON_TERMINAL;
-    }
 
     private fun toStateType(isTerminalState: Boolean) =
         if (isTerminalState) TERMINAL else NON_TERMINAL
@@ -132,8 +133,3 @@ data class WorkingStack(
         throw IllegalStateException("Can`t resolve shift-shift conflict")
 
 }
-
-data class RightUnit(
-    val isRegex: Boolean,
-    val representation: String,
-)

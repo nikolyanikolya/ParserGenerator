@@ -1,3 +1,5 @@
+package src
+
 class GrammarElementsCounter(
     grammar: TokenizedGrammar,
 ) {

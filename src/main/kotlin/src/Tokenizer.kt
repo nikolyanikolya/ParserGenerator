@@ -1,34 +1,35 @@
-import java.lang.reflect.Modifier
+package src
+
+import domain.ApplicationNeedRestartException
+import domain.Node
+import domain.RuleVariants
+import utils.ReflectionUtils.obtainJavaClass
+import utils.ReflectionUtils.obtainReduceFunctions
+import java.nio.file.Files
 import java.nio.file.Files.newBufferedWriter
 import java.nio.file.Path
-import kotlin.reflect.KFunction
-import kotlin.reflect.KProperty
-import kotlin.reflect.jvm.javaMethod
-import kotlin.reflect.jvm.kotlinProperty
+import kotlin.io.path.Path
+import kotlin.io.path.nameWithoutExtension
 
 object Tokenizer {
-    fun tokenize(input: List<String>): TokenizedGrammar {
-        val fileWithFunctions = "src/main/kotlin/functions.kt"
+    fun tokenize(input: List<String>, reduceFunctionsFileName: String): TokenizedGrammar {
+        val reduceFunctionsPath = Path(reduceFunctionsFileName)
+        val reduceFunctionsJavaClass = obtainJavaClass(reduceFunctionsPath)
+        val reduceFunctionFileExists = Files.exists(reduceFunctionsPath)
+
         val terminalToNode = HashMap<String, Node>()
-        newBufferedWriter(Path.of(fileWithFunctions)).use { writer ->
-                writer.write("import kotlin.reflect.KFunction")
-                writer.newLine()
-                val allFunctions = mutableListOf<String>()
-                input.forEach {
-                    val res = it.split("@", limit = 3)
-                    if (res.size > 1) {
-                        writer.write(res[1])
-                        val functionName = res[1].trim().split(" ")[1]
-                        allFunctions.add("::$functionName")
-                        writer.newLine()
-                    }
-                }
-                writer.write("val functions : Array<KFunction<Any>> = arrayOf(${allFunctions.joinToString(",")})")
-                writer.newLine()
+        if (!reduceFunctionFileExists) {
+            ReduceFunctionsParser.parseAndSaveToFile(input, reduceFunctionsPath)
+            throw ApplicationNeedRestartException("Reduce functions were parsed," +
+                    " now, please ensure that functions are correct and restart application"
+            )
+        }
+        val reduceFunctions = obtainReduceFunctions(
+            reduceFunctionsJavaClass,
+            reduceFunctionsPath.nameWithoutExtension
+        )!!.call()
+        Files.delete(reduceFunctionsPath)
 
-            }
-
-        val functions = getFieldFromFile("FunctionsKt", "functions")!!.call()
         var cnt = 0L
         val nonTerminalToNode = HashMap<String, Node>().let { map ->
             input.forEach {
@@ -82,46 +83,21 @@ object Tokenizer {
                         tokens.add(nonTerminalToNode[trimmedUnit]!!)
                     }
                 }
-
                 if (res.size > 1) {
-                    ruleVariants.add(tokens, functions[functionCnt++])
+                    ruleVariants.add(tokens, reduceFunctions[functionCnt++])
                 } else {
                     ruleVariants.add(tokens)
                 }
-
                 if (rules.containsKey(leftToken)) {
                     ruleVariants.plus(rules[leftToken]!!)
                 }
             }
-
             rules[leftToken] = ruleVariants
         }
 
         return TokenizedGrammar(startedNode, endNode, nonTerminalToNode, terminalToNode, regexToNode, rules)
     }
 }
-
-data class Node(
-    val token: Long,
-    val isTerminal: Boolean,
-)
-
-data class RuleVariants(
-    val rulesRight: MutableList<RuleVariant>
-) {
-    fun add(rule: List<Node>, function: KFunction<Any>? = null) {
-        rulesRight.add(RuleVariant(rule, function))
-    }
-
-    fun plus(rules: RuleVariants) {
-        rulesRight += rules.rulesRight
-    }
-}
-
-data class RuleVariant(
-    val rightNodes: List<Node>,
-    val reduceFunction: KFunction<Any>? = null
-)
 
 data class TokenizedGrammar(
     val start: Node,
@@ -131,7 +107,7 @@ data class TokenizedGrammar(
     val regexToNode: HashMap<Regex, Node>,
     val rules: HashMap<Node, RuleVariants>,
 ) {
-    fun writeRules(fileName: Path) {
+    fun logRules(fileName: Path) {
         newBufferedWriter(fileName).use {
             rules.entries.forEach { (key, value) ->
                 it.write("${key.token} -> " +
@@ -144,7 +120,7 @@ data class TokenizedGrammar(
         }
     }
 
-    fun writeTokens(fileName: Path) {
+    fun logTokens(fileName: Path) {
         newBufferedWriter(fileName).use {
             (terminalToNode.entries + nonTerminalToNode.entries + regexToNode.entries).forEach { (key, value) ->
                 it.write("$key = $value")
@@ -152,12 +128,4 @@ data class TokenizedGrammar(
             }
         }
     }
-}
-
-fun getFieldFromFile(fileName: String, fieldName: String): KProperty<Array<KFunction<Any>>>? {
-    val selfRef = ::getFieldFromFile
-    val currentClass = selfRef.javaMethod!!.declaringClass
-    val classDefiningFunctions = currentClass.classLoader.loadClass(fileName)
-    val javaField = classDefiningFunctions.declaredFields.find { it.name == fieldName && Modifier.isStatic(it.modifiers) }
-    return javaField?.kotlinProperty as KProperty<Array<KFunction<Any>>>?
 }
