@@ -8,4 +8,6 @@ Antlr-like application (program arguments: "expression to process" "grammar file
    
 - supports kotlin functions in grammar file for rule`s arguments processing
 
+- supports visualization of the parse tree
+
 - example of [grammar](https://github.com/nikolyanikolya/ParserGenerator/blob/main/grammar.txt)
