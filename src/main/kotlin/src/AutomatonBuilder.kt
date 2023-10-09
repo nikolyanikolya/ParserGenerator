@@ -6,12 +6,12 @@ class AutomatonBuilder(
     private val grammar: TokenizedGrammar,
 ) {
     fun build(): Automaton = with(grammar) {
-        val e = grammar.terminalToNode["empty"]!!
+        val e = terminalToNode["empty"]
         val nka = HashMap<StateWithTransition, List<State>>()
         val right = rules[start]!!.rulesRight.map { it.rightNodes }.flatten()
-        val reduceFunction = rules[start]!!.rulesRight.map { it.reduceFunction }
-        assert(reduceFunction.size == 1)
-        val startState = State(0, Rule(start, right, reduceFunction[0]), setOf(end), right.isEmpty())
+        val reduceFunctions = rules[start]!!.rulesRight.map { it.reduceFunction }
+        require(reduceFunctions.size == 1)
+        val startState = State(0, Rule(start, right, reduceFunctions[0]), setOf(end), right.isEmpty())
         val visited = HashSet<RawState>()
         val deque = ArrayDeque(listOf(RawState(startState)))
 
@@ -28,9 +28,9 @@ class AutomatonBuilder(
                     rules[node]!!.rulesRight
                         .forEach { ruleVariant ->
                             val to = State(
-                                0,
-                                Rule(node, ruleVariant.rightNodes, ruleVariant.reduceFunction),
-                                lookahead.let {
+                                marker = 0,
+                                rule = Rule(node, ruleVariant.rightNodes, ruleVariant.reduceFunction),
+                                lookahead = lookahead.let {
                                     var curLA = setOf<Node>()
                                     for (i in 1..rule.right.size) {
                                         if (marker + i >= rule.right.size) {
@@ -45,7 +45,7 @@ class AutomatonBuilder(
                                     }
                                     curLA
                                 },
-                                ruleVariant.rightNodes.isEmpty()
+                                isTerminalState = ruleVariant.rightNodes.isEmpty()
                             )
                             val rawTo = RawState(to)
                             if (rawTo !in visited) {
@@ -100,7 +100,7 @@ class AutomatonBuilder(
 
 class Automaton(
     val nka: HashMap<StateWithTransition, List<State>>,
-    val e: Node,
+    val e: Node?,
     val end: Node,
     val startState: State
 ) {

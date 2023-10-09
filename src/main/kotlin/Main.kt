@@ -9,7 +9,7 @@ import java.nio.file.Files.newBufferedReader
 import java.nio.file.Path.of
 
 fun main(args: Array<String>) {
-    val input = process(args.getOrElse(0) { "( ( 4 + 1 * 2 * 3 ) * 10 )" })
+    val input = process(args.getOrElse(0) { "((4+1 * 2 * 3) * 10)" })
     val reduceFunctionsFileName = "src/main/kotlin/src/reduceFunctions.kt"
 
     val filePath = of(args.getOrElse(1) { "grammar.txt" })

@@ -8,5 +8,6 @@ t: f t'         @ fun mul1 (vararg args: Any) = args.fold(1) { x, y -> (x as Int
 t': * f t'      @ fun mul2 (vararg args: Any) = args.drop(1).fold(1) { x, y -> (x as Int) * (y as Int) } @
 t': empty       @ fun const3 (vararg args: Any) = 1 @
 f: ( e )        @ fun const4 (vararg args: Any) = args[1] as Int @
-f: N            @ fun const5 (vararg args: Any) = args.first() as Int @
-N: [1-9][0-9]*  @ fun parseInteger (vararg args: Any) = (args.first() as String).toInt() @
+f: N f          @ fun buildDigit (vararg args: Any): Int { val arg1 = args[0] as Int; val arg2 = args[1] as Int; return if (arg2 == -1) arg1 else arg1 * 10 + arg2 }  @
+f: empty        @ fun const6 (vararg args: Any) = -1 @
+N: [0-9]        @ fun parseInteger (vararg args: Any) = (args.first() as String).toInt() @

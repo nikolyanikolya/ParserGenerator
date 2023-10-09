@@ -44,57 +44,45 @@ data class WorkingStack(
             }
         }
 
-        assert(trees.size == 1)
+        require(trees.size == 1)
         println("Success processing")
         println("Result: ${trees[0].value}")
         return trees[0]
     }
 
     private fun shift() {
-        if (input.isEmpty()) {
-            trees.add(Tree(nodeToTerminalMapper[automaton.end]!!.toString()))
-            workingStack.add(automaton.end)
-        } else {
-            val top = input.removeFirst()
-            val topNode = terminalToNodeMapper[top] ?: regexToNodeMapper.entries.first { (regex, _) ->
+        var top = ""
+        while (input.isNotEmpty()) {
+            top += input.removeFirst()
+            val topNode = terminalToNodeMapper[top] ?: regexToNodeMapper.entries.firstOrNull { (regex, _) ->
                 top.matches(regex)
-            }.value
+            }?.value ?: continue
             trees.add(Tree(top, top))
             workingStack.add(topNode)
+            currentStates = automaton.statesAfterTransitions(workingStack)
+            return
         }
+        trees.add(Tree(nodeToTerminalMapper[automaton.end]!!.toString()))
+        workingStack.add(automaton.end)
 
         currentStates = automaton.statesAfterTransitions(workingStack)
     }
 
     private fun reduce(state: State): Unit = with(state.rule) {
-        val treesInState = right.map {
-            if (it.isTerminal) {
-                if (nodeToTerminalMapper[it] != null) {
-                    RightUnit(isRegex = false, nodeToTerminalMapper[it]!!)
-                } else {
-                    RightUnit(isRegex = true, nodeToRegexMapper[it]!!.toString())
-                }
-            } else {
-                RightUnit(isRegex = false, nodeToNonTerminalMapper[it]!!)
-            }
-        }
-        val diff = buildList {
-            for (i in 1..(workingStack.size - right.size)) add(Node(-1, true))
-        }
-        val treesDiff = buildList {
-            for (i in 1..(trees.size - right.size)) add(RightUnit(isRegex = false, ""))
-        }
+        val rightUnits = rightUnits(state)
+        val workingStackDiff = List(workingStack.size - right.size) { Node(-1, true) }
+        val rightUnitsDiff = List(trees.size - right.size) { RightUnit(isRegex = false, "") }
 
-        workingStack = workingStack.zip(diff + right)
+        workingStack = workingStack.zip(workingStackDiff + right)
             .dropLastWhile { (nodeInStack, nodeInState) ->
                 nodeInStack == nodeInState
             }
             .unzip().first as MutableList
 
-        val children = trees.zip(treesDiff + treesInState)
-            .takeLastWhile { (tree, treeInState) ->
-                ((treeInState.isRegex && tree.node.matches(treeInState.representation.toRegex()))
-                        || (tree.node == treeInState.representation))
+        val children = trees.zip(rightUnitsDiff + rightUnits)
+            .takeLastWhile { (tree, rightUnit) ->
+                ((rightUnit.isRegex && tree.node.matches(rightUnit.representation.toRegex()))
+                        || (tree.node == rightUnit.representation))
 
             }
             .unzip().first as MutableList
@@ -110,21 +98,44 @@ data class WorkingStack(
                     Tree(nodeToTerminalMapper[automaton.e]!!)
                 )) as MutableList
             )
-        ) // context-free grammar
+        )
         currentStates = automaton.statesAfterTransitions(workingStack)
     }
 
     private fun resolveShiftReducing(state: State) {
-        if (input.isEmpty()) {
-            reduce(state)
-        } else {
-            val node = terminalToNodeMapper[input.first()] ?: regexToNodeMapper.entries.first { (regex, _) ->
-                input.first().matches(regex)
-            }.value
+        val inputCopy = ArrayDeque(input)
+        var top = ""
+        while (inputCopy.isNotEmpty()) {
+            top += inputCopy.removeFirst()
+            val node = terminalToNodeMapper[top] ?: regexToNodeMapper.entries.firstOrNull { (regex, _) ->
+                top.matches(regex)
+            }?.value ?: continue
             if (node in state.lookahead) {
                 reduce(state)
             } else {
                 shift()
+            }
+            return
+        }
+        input.clear()
+        reduce(state)
+    }
+
+    private fun rightUnits(state: State): List<RightUnit> = with(state.rule) {
+        right.map {
+            if (it.isTerminal) {
+                if (nodeToTerminalMapper[it] != null) {
+                    RightUnit(isRegex = false, nodeToTerminalMapper[it]!!)
+                } else if (nodeToRegexMapper[it] != null) {
+                    RightUnit(isRegex = true, nodeToRegexMapper[it]!!.toString())
+                } else {
+                    throw IllegalStateException("unexpected token found")
+                }
+            } else {
+                RightUnit(
+                    isRegex = false, nodeToNonTerminalMapper[it]
+                        ?: throw IllegalStateException("unexpected token found")
+                )
             }
         }
     }
